@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e0e0f">
+<title>练琴节拍器 Pro</title>
+<style>
+:root{
+  --bg:#0e0e0f;--panel:#181820;--panel2:#25252d;--text:#f4f4f4;--muted:#96969d;
+  --line:#353541;--accent:#fff;--hot:#ff9800;--ok:#9df5b5;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body{min-height:100vh;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);display:flex;justify-content:center}
+.app{width:min(100%,520px);padding:16px 0 36px}
+.top{display:flex;justify-content:space-between;align-items:center;margin:4px 2px 16px}
+.title{font-weight:800;letter-spacing:.06em}.status{font-size:12px;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:14px}
+.main{text-align:center;padding:22px 18px 18px}
+.pendulum{height:88px;position:relative;margin-bottom:4px}
+.arm{position:absolute;left:50%;bottom:8px;width:4px;height:72px;border-radius:4px;background:#cfcfd3;transform-origin:50% 100%;transform:translateX(-50%) rotate(-28deg)}
+.ball{position:absolute;top:-3px;left:50%;width:20px;height:20px;border-radius:50%;background:white;transform:translateX(-50%)}
+.flash{position:absolute;left:50%;bottom:0;width:12px;height:12px;border-radius:50%;background:#444;transform:translateX(-50%)}
+.flash.on{background:var(--hot);box-shadow:0 0 24px rgba(255,152,0,.75)}
+.bpm{font-size:76px;line-height:1;font-weight:850;letter-spacing:-.05em}
+.bpmLabel{margin-top:6px;color:var(--muted);font-size:12px;letter-spacing:.2em}
+.tempoName{font-size:13px;color:#cfcfd3;margin-top:8px}
+.stepRow{display:grid;grid-template-columns:58px 1fr 58px;gap:10px;align-items:center;margin-top:18px}
+button,select,input{font:inherit}
+button{border:0;background:var(--panel2);color:var(--text);border-radius:14px;font-weight:750;-webkit-tap-highlight-color:transparent}
+.step{height:50px;font-size:28px}
+input[type=range]{width:100%;accent-color:white}
+.play{width:100%;height:60px;margin-top:16px;background:#ff9800;color:white;font-size:18px;border-radius:17px}
+.play.playing{background:#28282d;color:white;border:1px solid #444}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.choice{height:42px;font-size:14px;border:1px solid transparent}
+.choice.on{background:#ff9800;color:white}
+.sectionTitle{font-size:12px;color:var(--muted);margin-bottom:12px;letter-spacing:.04em}
+.row{display:flex;gap:10px;align-items:center}
+.row + .row{margin-top:10px}
+.grow{flex:1}
+select,input[type=number]{
+  background:#111113;color:white;border:1px solid #37373c;border-radius:12px;padding:10px 11px;outline:none
+}
+select{width:100%}
+.smallInput{width:76px}
+.toggle{height:44px;flex:1}
+.toggle.on{background:#ff9800;color:white}
+.tap{height:52px;width:100%;font-size:16px}
+.beatEditor{display:flex;gap:8px;flex-wrap:wrap}
+.beatBtn{width:42px;height:42px;border:1px solid #38383e}
+.beatBtn.normal{background:#2a2a2f}
+.beatBtn.accent{background:#ff9800;color:white}
+.beatBtn.mute{background:#111;color:#666;border-style:dashed}
+.note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#111113;border-radius:14px;padding:12px;text-align:center}
+.stat strong{display:block;font-size:20px}.stat span{font-size:10px;color:var(--muted)}
+.progress{height:8px;background:#30303a;border-radius:999px;overflow:hidden;margin-top:12px}
+.progress>div{height:100%;width:0;background:white}
+.presetRow{display:flex;gap:8px;overflow:auto;padding-bottom:2px}
+.preset{white-space:nowrap;padding:10px 13px}
+.footer{text-align:center;color:#626268;font-size:11px;margin-top:18px}
+@media(max-width:380px){.bpm{font-size:66px}.grid4{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="top">
+    <div class="title">练琴节拍器 Pro</div>
+    <div id="status" class="status">准备</div>
+  </div>
+
+  <section class="card main">
+    <div class="pendulum">
+      <div id="arm" class="arm"><div class="ball"></div></div>
+      <div id="flash" class="flash"></div>
+    </div>
+    <div id="bpmDisplay" class="bpm">120</div>
+    <div class="bpmLabel">BPM</div>
+    <div id="tempoName" class="tempoName">Allegro Moderato</div>
+    <div class="stepRow">
+      <button id="minus" class="step">−</button>
+      <input id="bpmRange" type="range" min="30" max="300" value="120">
+      <button id="plus" class="step">+</button>
+    </div>
+    <button id="playBtn" class="play">▶</button>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">快速速度</div>
+    <div class="presetRow">
+      <button class="preset" data-bpm="60">60</button>
+      <button class="preset" data-bpm="80">80</button>
+      <button class="preset" data-bpm="100">100</button>
+      <button class="preset" data-bpm="120">120</button>
+      <button class="preset" data-bpm="144">144</button>
+      <button class="preset" data-bpm="160">160</button>
+      <button class="preset" data-bpm="180">180</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">拍号</div>
+    <div class="grid4" id="meterGrid">
+      <button class="choice" data-meter="2/4">2/4</button>
+      <button class="choice" data-meter="3/4">3/4</button>
+      <button class="choice on" data-meter="4/4">4/4</button>
+      <button class="choice" data-meter="6/8">6/8</button>
+      <button class="choice" data-meter="5/4">5/4</button>
+      <button class="choice" data-meter="7/8">7/8</button>
+      <button class="choice" data-meter="9/8">9/8</button>
+      <button class="choice" data-meter="12/8">12/8</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">每拍重音 · 点按循环：重音 → 普通 → 静音</div>
+    <div id="beatEditor" class="beatEditor"></div>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">细分</div>
+    <div class="grid3" id="subGrid">
+      <button class="choice on" data-sub="1">♩ 1拍</button>
+      <button class="choice" data-sub="2">♫ 2分</button>
+      <button class="choice" data-sub="3">三连音</button>
+      <button class="choice" data-sub="4">四连音</button>
+      <button class="choice" data-sub="swing">Swing</button>
+      <button class="choice" data-sub="off">仅主拍</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">音色</div>
+    <div class="row">
+      <select id="soundSelect">
+        <option value="classic">经典短 Click（推荐）</option>
+        <option value="woodtest">木质敲击版</option>
+        <option value="pianotest">钢琴击弦版</option>
+        <option value="mechanical">机械节拍器</option>
+        <option value="softwood">柔和木质</option>
+        <option value="muted">极简轻敲</option>
+      </select>
+    </div>
+    <div class="row">
+      <label class="grow">音量
+        <input id="volumeRange" type="range" min="0.3" max="1.6" step="0.05" value="1.5">
+      </label>
+      <span id="volumeLabel" style="min-width:46px;text-align:right;color:#cfcfd3">150%</span>
+    </div>
+    <div class="row">
+      <button id="vibrateBtn" class="toggle">震动</button>
+      <button id="visualBtn" class="toggle on">视觉拍点</button>
+    </div>
+    <div class="note">钢琴练习默认使用“经典短 Click”：短、清楚、衰减快，不容易盖住琴声。新增“木质敲击版”和“钢琴击弦版”，就是你刚刚试听过的那两个音色。</div>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">Tap Tempo</div>
+    <button id="tapBtn" class="tap">TAP TEMPO</button>
+    <div class="note">按你心里的速度连续点 3–6 下，自动计算 BPM。</div>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">逐步加速练习</div>
+    <div class="row">
+      <label class="grow">每 <input id="rampBars" class="smallInput" type="number" min="1" max="64" value="4"> 小节</label>
+      <label>+ <input id="rampStep" class="smallInput" type="number" min="1" max="20" value="2"> BPM</label>
+    </div>
+    <div class="row">
+      <label class="grow">最高 <input id="rampMax" class="smallInput" type="number" min="30" max="300" value="160"> BPM</label>
+      <button id="rampBtn" class="toggle">开启加速</button>
+    </div>
+    <div class="note">适合音阶、琶音、哈农、慢练段落。达到最高 BPM 后保持不再加速。</div>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">练习计时</div>
+    <div class="row">
+      <select id="timerSelect">
+        <option value="0">不限时</option>
+        <option value="300">5 分钟</option>
+        <option value="600">10 分钟</option>
+        <option value="900">15 分钟</option>
+        <option value="1200">20 分钟</option>
+        <option value="1800">30 分钟</option>
+        <option value="custom">自定义</option>
+      </select>
+      <button id="resetStats" class="toggle">清零</button>
+    </div>
+    <div class="row" id="customTimerRow" style="display:none">
+      <label class="grow">自定义时长
+        <input id="customTimerMinutes" class="smallInput" type="number" min="1" max="300" value="25"> 分钟
+      </label>
+    </div>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><strong id="barCount">0</strong><span>小节</span></div>
+      <div class="stat"><strong id="beatCount">0</strong><span>主拍</span></div>
+      <div class="stat"><strong id="timeCount">00:00</strong><span>练习时间</span></div>
+    </div>
+    <div class="progress"><div id="timerProgress"></div></div>
+  </section>
+
+  <div class="footer">建议练琴时关闭浏览器省电模式；锁屏后网页音频可能被系统Ⅱ。</div>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const bpmDisplay=$('bpmDisplay'), bpmRange=$('bpmRange'), playBtn=$('playBtn'),
+    minus=$('minus'), plus=$('plus'), status=$('status'), flash=$('flash'), arm=$('arm'),
+    tempoName=$('tempoName'), beatEditor=$('beatEditor'), soundSelect=$('soundSelect'),
+    volumeRange=$('volumeRange'), volumeLabel=$('volumeLabel'),
+    vibrateBtn=$('vibrateBtn'), visualBtn=$('visualBtn'), tapBtn=$('tapBtn'),
+    rampBars=$('rampBars'), rampStep=$('rampStep'), rampMax=$('rampMax'), rampBtn=$('rampBtn'),
+    timerSelect=$('timerSelect'), customTimerRow=$('customTimerRow'), customTimerMinutes=$('customTimerMinutes'),
+    barCountEl=$('barCount'), beatCountEl=$('beatCount'),
+    timeCountEl=$('timeCount'), timerProgress=$('timerProgress'), resetStats=$('resetStats');
+
+  const settings = JSON.parse(localStorage.getItem('piano_metronome_pro') || '{}');
+  let bpm = settings.bpm || 120;
+  let meter = settings.meter || '4/4';
+  let subdivision = settings.subdivision || '1';
+  let sound = settings.sound || 'classic';
+  let volume = settings.volume || 1.5;
+  let vibrate = !!settings.vibrate;
+  let visual = settings.visual !== false;
+  let beatStates = settings.beatStates || [];
+  let rampEnabled = !!settings.rampEnabled;
+
+  let audioCtx=null, playing=false, timerID=null, nextNoteTime=0;
+  let currentBeat=0, currentSub=0, barCount=0, beatCount=0, elapsed=0, elapsedTimer=null;
+  let beatsPerBar=4, denominator=4, barSinceRamp=0;
+  const lookahead=25, scheduleAhead=0.12;
+
+  function meterParts(){
+    [beatsPerBar,denominator] = meter.split('/').map(Number);
+    if (beatStates.length !== beatsPerBar) {
+      beatStates = Array.from({length:beatsPerBar}, (_,i)=>i===0?'accent':'normal');
+    }
+  }
+
+  function save(){
+    localStorage.setItem('piano_metronome_pro', JSON.stringify({
+      bpm,meter,subdivision,sound,volume,vibrate,visual,beatStates,rampEnabled
+    }));
+  }
+
+  function tempoLabel(x){
+    if(x<40)return 'Grave';
+    if(x<60)return 'Largo';
+    if(x<66)return 'Larghetto';
+    if(x<76)return 'Adagio';
+    if(x<108)return 'Andante / Moderato';
+    if(x<120)return 'Allegretto';
+    if(x<168)return 'Allegro';
+    if(x<200)return 'Presto';
+    return 'Prestissimo';
+  }
+
+  function updateUI(){
+    bpmDisplay.textContent=bpm; bpmRange.value=bpm; tempoName.textContent=tempoLabel(bpm);
+    soundSelect.value=sound;
+    volumeRange.value=volume;
+    volumeLabel.textContent=Math.round(volume*100)+'%';
+    vibrateBtn.classList.toggle('on',vibrate);
+    visualBtn.classList.toggle('on',visual);
+    rampBtn.classList.toggle('on',rampEnabled);
+    document.querySelectorAll('[data-meter]').forEach(b=>b.classList.toggle('on',b.dataset.meter===meter));
+    document.querySelectorAll('[data-sub]').forEach(b=>b.classList.toggle('on',b.dataset.sub===subdivision));
+    renderBeatEditor();
+    save();
+  }
+
+  function renderBeatEditor(){
+    beatEditor.innerHTML='';
+    beatStates.forEach((state,i)=>{
+      const b=document.createElement('button');
+      b.className='beatBtn '+state; b.textContent=i+1;
+      b.onclick=()=>{
+        beatStates[i]=state==='accent'?'normal':state==='normal'?'mute':'accent';
+        updateUI();
+      };
+      beatEditor.appendChild(b);
+    });
+  }
+
+  function setBpm(v){
+    bpm=Math.max(30,Math.min(300,Math.round(v)));
+    updateUI();
+  }
+
+  async function ensureAudio(){
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') await audioCtx.resume();
+  }
+
+  function envelopeGain(gain,time,peak,dur){
+    const scaled=Math.max(.0002, Math.min(1.8, peak*volume));
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(scaled,time+.002);
+    gain.gain.exponentialRampToValueAtTime(.0001,time+dur);
+  }
+
+  function playClassic(time,accent,sub){
+    // 钢琴练习优化：短瞬态 + 快速衰减，减少和琴声混合。
+    const osc=audioCtx.createOscillator();
+    const gain=audioCtx.createGain();
+    const click=audioCtx.createOscillator();
+    const clickGain=audioCtx.createGain();
+
+    osc.type='sine';
+    osc.frequency.value=accent ? 1120 : (sub ? 700 : 820);
+
+    click.type='triangle';
+    click.frequency.value=accent ? 2600 : 2200;
+
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(
+      Math.min(1.8,(accent?.72:(sub?.18:.46))*volume),
+      time+.001
+    );
+    gain.gain.exponentialRampToValueAtTime(.0001,time+.042);
+
+    clickGain.gain.setValueAtTime(.0001,time);
+    clickGain.gain.exponentialRampToValueAtTime(
+      Math.min(1.8,(accent?.16:.08)*volume),
+      time+.0005
+    );
+    clickGain.gain.exponentialRampToValueAtTime(.0001,time+.008);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    click.connect(clickGain);
+    clickGain.connect(audioCtx.destination);
+
+    osc.start(time);
+    osc.stop(time+.05);
+    click.start(time);
+    click.stop(time+.012);
+  }
+
+
+  function playWoodTest(time,accent,sub){
+    // 直接沿用你之前试听过的“木质敲击版”参数
+    const osc=audioCtx.createOscillator();
+    const gain=audioCtx.createGain();
+    const click=audioCtx.createOscillator();
+    const clickGain=audioCtx.createGain();
+
+    osc.type='triangle';
+    osc.frequency.value=accent ? 900 : (sub ? 520 : 680);
+
+    click.type='triangle';
+    click.frequency.value=accent ? 2600 : 2200;
+
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(
+      Math.min(1.8,(accent?.72:(sub?.18:.46))*volume),
+      time+.001
+    );
+    gain.gain.exponentialRampToValueAtTime(.0001,time+.042);
+
+    clickGain.gain.setValueAtTime(.0001,time);
+    clickGain.gain.exponentialRampToValueAtTime(
+      Math.min(1.8,(accent?.16:.08)*volume),
+      time+.0005
+    );
+    clickGain.gain.exponentialRampToValueAtTime(.0001,time+.008);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    click.connect(clickGain);
+    clickGain.connect(audioCtx.destination);
+
+    osc.start(time);
+    osc.stop(time+.05);
+    click.start(time);
+    click.stop(time+.012);
+  }
+
+  function playPianoTest(time,accent,sub){
+    // 直接沿用你之前试听过的“钢琴击弦版”参数
+    const osc=audioCtx.createOscillator();
+    const gain=audioCtx.createGain();
+    const click=audioCtx.createOscillator();
+    const clickGain=audioCtx.createGain();
+
+    osc.type='triangle';
+    osc.frequency.value=accent ? 1400 : (sub ? 760 : 980);
+
+    click.type='triangle';
+    click.frequency.value=accent ? 2600 : 2200;
+
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(
+      Math.min(1.8,(accent?.72:(sub?.18:.46))*volume),
+      time+.001
+    );
+    gain.gain.exponentialRampToValueAtTime(.0001,time+.042);
+
+    clickGain.gain.setValueAtTime(.0001,time);
+    clickGain.gain.exponentialRampToValueAtTime(
+      Math.min(1.8,(accent?.16:.08)*volume),
+      time+.0005
+    );
+    clickGain.gain.exponentialRampToValueAtTime(.0001,time+.008);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    click.connect(clickGain);
+    clickGain.connect(audioCtx.destination);
+
+    osc.start(time);
+    osc.stop(time+.05);
+    click.start(time);
+    click.stop(time+.012);
+  }
+
+  function playMechanical(time,accent,sub){
+    // 两个极短振荡器叠加，模拟传统机械节拍器“tick/tock”的干脆感。
+    const freqs = accent ? [1450, 920] : (sub ? [820, 560] : [1080, 690]);
+    freqs.forEach((f,idx)=>{
+      const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(f,time);
+      osc.frequency.exponentialRampToValueAtTime(f*0.72,time+.03);
+      gain.gain.setValueAtTime(.0001,time);
+      gain.gain.exponentialRampToValueAtTime(Math.min(1.8,((accent?.55:(sub?.13:.34))/(idx+1))*volume),time+.001);
+      gain.gain.exponentialRampToValueAtTime(.0001,time+.032);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(time); osc.stop(time+.04);
+    });
+  }
+
+  function playSoftWood(time,accent,sub){
+    // 柔和木质敲击，低频一些，不和钢琴高音区抢存在感。
+    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+    osc.type='sine';
+    const f = accent ? 760 : (sub ? 430 : 560);
+    osc.frequency.setValueAtTime(f,time);
+    osc.frequency.exponentialRampToValueAtTime(f*.58,time+.045);
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(Math.min(1.8,(accent?.72:(sub?.16:.44))*volume),time+.002);
+    gain.gain.exponentialRampToValueAtTime(.0001,time+.055);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(time); osc.stop(time+.065);
+  }
+
+  function playMuted(time,accent,sub){
+    // 极短轻敲，适合长时间练琴时降低听觉疲劳。
+    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+    osc.type='triangle';
+    osc.frequency.value=accent ? 980 : (sub ? 520 : 650);
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(Math.min(1.8,(accent?.48:(sub?.11:.28))*volume),time+.001);
+    gain.gain.exponentialRampToValueAtTime(.0001,time+.026);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(time); osc.stop(time+.032);
+  }
+
+  function triggerSound(time,accent,sub,muted){
+    if(muted)return;
+    ({classic:playClassic,woodtest:playWoodTest,pianotest:playPianoTest,mechanical:playMechanical,softwood:playSoftWood,muted:playMuted}[sound]||playClassic)(time,accent,sub);
+  }
+
+  function getSubPattern(){
+    if(subdivision==='off'||subdivision==='1') return [0];
+    if(subdivision==='2') return [0,.5];
+    if(subdivision==='3') return [0,1/3,2/3];
+    if(subdivision==='4') return [0,.25,.5,.75];
+    if(subdivision==='swing') return [0,2/3];
+    return [0];
+  }
+
+  function beatDuration(){
+    // BPM is treated as quarter-note BPM; 6/8 etc. still follows quarter-note pulse spacing for predictable practice use.
+    return 60/bpm;
+  }
+
+  function scheduleVisual(time,beatIndex,accent){
+    if(!visual)return;
+    const delay=Math.max(0,(time-audioCtx.currentTime)*1000);
+    setTimeout(()=>{
+      flash.classList.toggle('on',true);
+      const dir=(beatIndex%2===0)?-28:28;
+      arm.style.transition=`transform ${Math.min(220,beatDuration()*500)}ms ease-out`;
+      arm.style.transform=`translateX(-50%) rotate(${dir}deg)`;
+      setTimeout(()=>flash.classList.remove('on'),80);
+    },delay);
+  }
+
+  function scheduleBeat(beatIndex,time){
+    const state=beatStates[beatIndex]||'normal';
+    const pattern=getSubPattern();
+    pattern.forEach((offset,j)=>{
+      const t=time+offset*beatDuration();
+      const isMain=j===0;
+      const isAccent=isMain&&state==='accent';
+      const muted=isMain&&state==='mute';
+      triggerSound(t,isAccent,!isMain,muted);
+      if(isMain){
+        scheduleVisual(t,beatIndex,isAccent);
+        const delay=Math.max(0,(t-audioCtx.currentTime)*1000);
+        setTimeout(()=>{
+          beatCount++; beatCountEl.textContent=beatCount;
+          if(vibrate&&navigator.vibrate) navigator.vibrate(isAccent?35:15);
+        },delay);
+      }
+    });
+  }
+
+  function advance(){
+    nextNoteTime += beatDuration();
+    currentBeat++;
+    if(currentBeat>=beatsPerBar){
+      currentBeat=0;
+      barCount++;
+      barSinceRamp++;
+      setTimeout(()=>{barCountEl.textContent=barCount},0);
+
+      if(rampEnabled){
+        const every=Math.max(1,Number(rampBars.value)||4);
+        const step=Math.max(1,Number(rampStep.value)||2);
+        const max=Math.max(30,Math.min(300,Number(rampMax.value)||160));
+        if(barSinceRamp>=every && bpm<max){
+          barSinceRamp=0;
+          setBpm(Math.min(max,bpm+step));
+        }
+      }
+    }
+  }
+
+  function scheduler(){
+    while(nextNoteTime<audioCtx.currentTime+scheduleAhead){
+      scheduleBeat(currentBeat,nextNoteTime);
+      advance();
+    }
+    timerID=setTimeout(scheduler,lookahead);
+  }
+
+  function formatTime(sec){
+    const m=Math.floor(sec/60),s=sec%60;
+    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+
+  function getTimerLimit(){
+    if(timerSelect.value==='custom'){
+      const mins=Math.max(1,Math.min(300,Number(customTimerMinutes.value)||25));
+      customTimerMinutes.value=mins;
+      return mins*60;
+    }
+    return Number(timerSelect.value)||0;
+  }
+
+  function startElapsed(){
+    elapsedTimer=setInterval(()=>{
+      elapsed++;
+      timeCountEl.textContent=formatTime(elapsed);
+      const limit=getTimerLimit();
+      if(limit>0){
+        timerProgress.style.width=Math.min(100,elapsed/limit*100)+'%';
+        if(elapsed>=limit){
+          stop();
+          alert('本次练习时间到。');
+        }
+      }else timerProgress.style.width='0%';
+    },1000);
+  }
+
+  async function start(){
+    await ensureAudio();
+    playing=true; currentBeat=0; nextNoteTime=audioCtx.currentTime+.06;
+    playBtn.textContent='Ⅱ'; playBtn.classList.add('playing');
+    status.textContent=meter+' · 运行中';
+    scheduler(); startElapsed();
+  }
+
+  function stop(){
+    playing=false; clearTimeout(timerID); timerID=null;
+    clearInterval(elapsedTimer); elapsedTimer=null;
+    playBtn.textContent='▶'; playBtn.classList.remove('playing');
+    status.textContent='准备'; flash.classList.remove('on');
+  }
+
+  playBtn.onclick=()=>playing?stop():start();
+  minus.onclick=()=>setBpm(bpm-1); plus.onclick=()=>setBpm(bpm+1);
+  bpmRange.oninput=e=>setBpm(Number(e.target.value));
+  soundSelect.onchange=e=>{sound=e.target.value;updateUI()};
+  volumeRange.oninput=e=>{volume=Number(e.target.value);volumeLabel.textContent=Math.round(volume*100)+'%';save()};
+  vibrateBtn.onclick=()=>{vibrate=!vibrate;updateUI();if(vibrate&&navigator.vibrate)navigator.vibrate(20)};
+  visualBtn.onclick=()=>{visual=!visual;updateUI()};
+  rampBtn.onclick=()=>{rampEnabled=!rampEnabled;barSinceRamp=0;updateUI()};
+
+  document.querySelectorAll('[data-bpm]').forEach(b=>b.onclick=()=>setBpm(Number(b.dataset.bpm)));
+  document.querySelectorAll('[data-meter]').forEach(b=>b.onclick=()=>{
+    meter=b.dataset.meter; meterParts(); currentBeat=0; updateUI();
+    if(playing)status.textContent=meter+' · 运行中';
+  });
+  document.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{subdivision=b.dataset.sub;updateUI()});
+
+  let taps=[];
+  tapBtn.onclick=()=>{
+    const now=performance.now();
+    if(taps.length&&now-taps[taps.length-1]>2000)taps=[];
+    taps.push(now); if(taps.length>6)taps.shift();
+    if(taps.length>=2){
+      const ints=[]; for(let i=1;i<taps.length;i++)ints.push(taps[i]-taps[i-1]);
+      const avg=ints.reduce((a,b)=>a+b,0)/ints.length;
+      setBpm(60000/avg);
+    }
+  };
+
+  timerSelect.onchange=()=>{
+    customTimerRow.style.display=timerSelect.value==='custom'?'flex':'none';
+    timerProgress.style.width='0%';
+  };
+  customTimerMinutes.onchange=()=>{
+    let v=Math.round(Number(customTimerMinutes.value)||25);
+    v=Math.max(1,Math.min(300,v));
+    customTimerMinutes.value=v;
+  };
+
+  resetStats.onclick=()=>{
+    barCount=0;beatCount=0;elapsed=0;barSinceRamp=0;
+    barCountEl.textContent='0';beatCountEl.textContent='0';timeCountEl.textContent='00:00';timerProgress.style.width='0%';
+  };
+
+  meterParts();
+  bpm=Math.max(30,Math.min(300,bpm));
+  updateUI();
+})();
+</script>
+</body>
+</html>
