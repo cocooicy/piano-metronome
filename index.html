@@ -136,14 +136,7 @@ select{width:100%}
   <section class="card">
     <div class="sectionTitle">音色</div>
     <div class="row">
-      <select id="soundSelect">
-        <option value="classic">经典短 Click（推荐）</option>
-        <option value="woodtest">木质敲击版</option>
-        <option value="pianotest">钢琴击弦版</option>
-        <option value="mechanical">机械节拍器</option>
-        <option value="softwood">柔和木质</option>
-        <option value="muted">极简轻敲</option>
-      </select>
+      <div style="color:#f4f4f4;font-weight:700">真实机械节拍器采样</div>
     </div>
     <div class="row">
       <label class="grow">音量
@@ -155,7 +148,7 @@ select{width:100%}
       <button id="vibrateBtn" class="toggle">震动</button>
       <button id="visualBtn" class="toggle on">视觉拍点</button>
     </div>
-    <div class="note">钢琴练习默认使用“经典短 Click”：短、清楚、衰减快，不容易盖住琴声。新增“木质敲击版”和“钢琴击弦版”，就是你刚刚试听过的那两个音色。</div>
+    <div class="note">使用你上传的机械节拍器录音，仅裁剪前置静音，不改变音色。裁剪前置静音约 43 ms，保留少量余量。每一拍播放完全相同的原音。</div>
   </section>
 
   <section class="card">
@@ -212,7 +205,7 @@ select{width:100%}
   const $ = id => document.getElementById(id);
   const bpmDisplay=$('bpmDisplay'), bpmRange=$('bpmRange'), playBtn=$('playBtn'),
     minus=$('minus'), plus=$('plus'), status=$('status'), flash=$('flash'), arm=$('arm'),
-    tempoName=$('tempoName'), beatEditor=$('beatEditor'), soundSelect=$('soundSelect'),
+    tempoName=$('tempoName'), beatEditor=$('beatEditor'),
     volumeRange=$('volumeRange'), volumeLabel=$('volumeLabel'),
     vibrateBtn=$('vibrateBtn'), visualBtn=$('visualBtn'), tapBtn=$('tapBtn'),
     rampBars=$('rampBars'), rampStep=$('rampStep'), rampMax=$('rampMax'), rampBtn=$('rampBtn'),
@@ -224,7 +217,6 @@ select{width:100%}
   let bpm = settings.bpm || 120;
   let meter = settings.meter || '4/4';
   let subdivision = settings.subdivision || '1';
-  let sound = settings.sound || 'classic';
   let volume = settings.volume || 1.5;
   let vibrate = !!settings.vibrate;
   let visual = settings.visual !== false;
@@ -245,7 +237,7 @@ select{width:100%}
 
   function save(){
     localStorage.setItem('piano_metronome_pro', JSON.stringify({
-      bpm,meter,subdivision,sound,volume,vibrate,visual,beatStates,rampEnabled
+      bpm,meter,subdivision,volume,vibrate,visual,beatStates,rampEnabled
     }));
   }
 
@@ -263,7 +255,6 @@ select{width:100%}
 
   function updateUI(){
     bpmDisplay.textContent=bpm; bpmRange.value=bpm; tempoName.textContent=tempoLabel(bpm);
-    soundSelect.value=sound;
     volumeRange.value=volume;
     volumeLabel.textContent=Math.round(volume*100)+'%';
     vibrateBtn.classList.toggle('on',vibrate);
@@ -293,181 +284,38 @@ select{width:100%}
     updateUI();
   }
 
+  const MECHANICAL_SAMPLE_DATA='data:audio/mpeg;base64,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ClqEGFCx9zSJFSZWvOsLNinZK2r/84RkfA0GBQbJDCPkjygSDKIQRAC1s9qh1NnBrkW7biV1L7E16tq+etntSmlbBu3ZKupPV2KN/UJbaUTcWgHoUNBR5MqWkmoZPEqcio84iGviIsWfqPEde9QNHoipWdyOSntQNPX53DvxN9bsO55R6S/6nv8qGssPdO4mEqEgOyNYK2qHpqxKdzzyxENSIb1HjtYaxFoho8WfkeVcdDu0ry2ena3Fp5Ws7+Vdns9w0yR4ayx6xWVdiIf6RN1VCSv/84REggfAAvrFACIAEFgF7WgARgBMOiqqqJb6aVP//BqqqopWmmmqqqJXTTSB1VVVH//+VppphEqqqoNNNNFVVRammmkz/5p1/+KVpppBqqqq6aaSNVVVRemmmX//8qqqqgmmmmiqqotTTTDIVVVRDf/////////////FhYXFRUVFWqFhb//FRUVFRQWFhZVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/84RkrQuoAG4ADGNuh8AA+AIAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/84RkVAAAAaQAAAAAAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/84RkVAAAAaQAAAAAAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/84RkVAAAAaQAAAAAAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/84RkVAAAAaQAAAAAAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/84RkVAAAAaQAAAAAAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=';
+  let mechanicalSampleBuffer=null;
+
+  async function loadMechanicalSample(){
+    if(mechanicalSampleBuffer) return;
+    const response=await fetch(MECHANICAL_SAMPLE_DATA);
+    const bytes=await response.arrayBuffer();
+    mechanicalSampleBuffer=await audioCtx.decodeAudioData(bytes);
+  }
+
   async function ensureAudio(){
     if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended') await audioCtx.resume();
-  }
-
-  function envelopeGain(gain,time,peak,dur){
-    const scaled=Math.max(.0002, Math.min(1.8, peak*volume));
-    gain.gain.setValueAtTime(.0001,time);
-    gain.gain.exponentialRampToValueAtTime(scaled,time+.002);
-    gain.gain.exponentialRampToValueAtTime(.0001,time+dur);
-  }
-
-  function playClassic(time,accent,sub){
-    // 钢琴练习优化：短瞬态 + 快速衰减，减少和琴声混合。
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    const click=audioCtx.createOscillator();
-    const clickGain=audioCtx.createGain();
-
-    osc.type='sine';
-    osc.frequency.value=accent ? 1120 : (sub ? 700 : 820);
-
-    click.type='triangle';
-    click.frequency.value=accent ? 2600 : 2200;
-
-    gain.gain.setValueAtTime(.0001,time);
-    gain.gain.exponentialRampToValueAtTime(
-      Math.min(1.8,(accent?.72:(sub?.18:.46))*volume),
-      time+.001
-    );
-    gain.gain.exponentialRampToValueAtTime(.0001,time+.042);
-
-    clickGain.gain.setValueAtTime(.0001,time);
-    clickGain.gain.exponentialRampToValueAtTime(
-      Math.min(1.8,(accent?.16:.08)*volume),
-      time+.0005
-    );
-    clickGain.gain.exponentialRampToValueAtTime(.0001,time+.008);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    click.connect(clickGain);
-    clickGain.connect(audioCtx.destination);
-
-    osc.start(time);
-    osc.stop(time+.05);
-    click.start(time);
-    click.stop(time+.012);
-  }
-
-
-  function playWoodTest(time,accent,sub){
-    // 直接沿用你之前试听过的“木质敲击版”参数
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    const click=audioCtx.createOscillator();
-    const clickGain=audioCtx.createGain();
-
-    osc.type='triangle';
-    osc.frequency.value=accent ? 900 : (sub ? 520 : 680);
-
-    click.type='triangle';
-    click.frequency.value=accent ? 2600 : 2200;
-
-    gain.gain.setValueAtTime(.0001,time);
-    gain.gain.exponentialRampToValueAtTime(
-      Math.min(1.8,(accent?.72:(sub?.18:.46))*volume),
-      time+.001
-    );
-    gain.gain.exponentialRampToValueAtTime(.0001,time+.042);
-
-    clickGain.gain.setValueAtTime(.0001,time);
-    clickGain.gain.exponentialRampToValueAtTime(
-      Math.min(1.8,(accent?.16:.08)*volume),
-      time+.0005
-    );
-    clickGain.gain.exponentialRampToValueAtTime(.0001,time+.008);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    click.connect(clickGain);
-    clickGain.connect(audioCtx.destination);
-
-    osc.start(time);
-    osc.stop(time+.05);
-    click.start(time);
-    click.stop(time+.012);
-  }
-
-  function playPianoTest(time,accent,sub){
-    // 直接沿用你之前试听过的“钢琴击弦版”参数
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    const click=audioCtx.createOscillator();
-    const clickGain=audioCtx.createGain();
-
-    osc.type='triangle';
-    osc.frequency.value=accent ? 1400 : (sub ? 760 : 980);
-
-    click.type='triangle';
-    click.frequency.value=accent ? 2600 : 2200;
-
-    gain.gain.setValueAtTime(.0001,time);
-    gain.gain.exponentialRampToValueAtTime(
-      Math.min(1.8,(accent?.72:(sub?.18:.46))*volume),
-      time+.001
-    );
-    gain.gain.exponentialRampToValueAtTime(.0001,time+.042);
-
-    clickGain.gain.setValueAtTime(.0001,time);
-    clickGain.gain.exponentialRampToValueAtTime(
-      Math.min(1.8,(accent?.16:.08)*volume),
-      time+.0005
-    );
-    clickGain.gain.exponentialRampToValueAtTime(.0001,time+.008);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    click.connect(clickGain);
-    clickGain.connect(audioCtx.destination);
-
-    osc.start(time);
-    osc.stop(time+.05);
-    click.start(time);
-    click.stop(time+.012);
-  }
-
-  function playMechanical(time,accent,sub){
-    // 两个极短振荡器叠加，模拟传统机械节拍器“tick/tock”的干脆感。
-    const freqs = accent ? [1450, 920] : (sub ? [820, 560] : [1080, 690]);
-    freqs.forEach((f,idx)=>{
-      const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
-      osc.type='sine';
-      osc.frequency.setValueAtTime(f,time);
-      osc.frequency.exponentialRampToValueAtTime(f*0.72,time+.03);
-      gain.gain.setValueAtTime(.0001,time);
-      gain.gain.exponentialRampToValueAtTime(Math.min(1.8,((accent?.55:(sub?.13:.34))/(idx+1))*volume),time+.001);
-      gain.gain.exponentialRampToValueAtTime(.0001,time+.032);
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.start(time); osc.stop(time+.04);
-    });
-  }
-
-  function playSoftWood(time,accent,sub){
-    // 柔和木质敲击，低频一些，不和钢琴高音区抢存在感。
-    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
-    osc.type='sine';
-    const f = accent ? 760 : (sub ? 430 : 560);
-    osc.frequency.setValueAtTime(f,time);
-    osc.frequency.exponentialRampToValueAtTime(f*.58,time+.045);
-    gain.gain.setValueAtTime(.0001,time);
-    gain.gain.exponentialRampToValueAtTime(Math.min(1.8,(accent?.72:(sub?.16:.44))*volume),time+.002);
-    gain.gain.exponentialRampToValueAtTime(.0001,time+.055);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(time); osc.stop(time+.065);
-  }
-
-  function playMuted(time,accent,sub){
-    // 极短轻敲，适合长时间练琴时降低听觉疲劳。
-    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
-    osc.type='triangle';
-    osc.frequency.value=accent ? 980 : (sub ? 520 : 650);
-    gain.gain.setValueAtTime(.0001,time);
-    gain.gain.exponentialRampToValueAtTime(Math.min(1.8,(accent?.48:(sub?.11:.28))*volume),time+.001);
-    gain.gain.exponentialRampToValueAtTime(.0001,time+.026);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(time); osc.stop(time+.032);
+    await loadMechanicalSample();
   }
 
   function triggerSound(time,accent,sub,muted){
-    if(muted)return;
-    ({classic:playClassic,woodtest:playWoodTest,pianotest:playPianoTest,mechanical:playMechanical,softwood:playSoftWood,muted:playMuted}[sound]||playClassic)(time,accent,sub);
+    if(muted || !mechanicalSampleBuffer) return;
+
+    const source=audioCtx.createBufferSource();
+    const gain=audioCtx.createGain();
+
+    source.buffer=mechanicalSampleBuffer;
+
+    // 原音播放：不裁剪、不改音高、不区分第一拍/普通拍/细分拍。
+    // 音量滑块只控制整体播放音量，不改变采样本身。
+    gain.gain.setValueAtTime(volume,time);
+
+    source.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    source.start(time);
   }
 
   function getSubPattern(){
@@ -592,7 +440,6 @@ select{width:100%}
   playBtn.onclick=()=>playing?stop():start();
   minus.onclick=()=>setBpm(bpm-1); plus.onclick=()=>setBpm(bpm+1);
   bpmRange.oninput=e=>setBpm(Number(e.target.value));
-  soundSelect.onchange=e=>{sound=e.target.value;updateUI()};
   volumeRange.oninput=e=>{volume=Number(e.target.value);volumeLabel.textContent=Math.round(volume*100)+'%';save()};
   vibrateBtn.onclick=()=>{vibrate=!vibrate;updateUI();if(vibrate&&navigator.vibrate)navigator.vibrate(20)};
   visualBtn.onclick=()=>{visual=!visual;updateUI()};
